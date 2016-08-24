@@ -1,0 +1,55 @@
+= calcite
+
+== 前言
+* 先吐槽一下，我的第一个例子是用calcite去查询mysql。这个是简单也最自然的想法，在官方或者百度之类，尽然找不到类似的。所以把这个贴出来。
+
+== 第一个例子,源码参考 link:TestCalcite.java[TestCalcite]
+----
+  public static void main(String[] args) throws ClassNotFoundException, SQLException {
+		Class.forName("org.apache.calcite.jdbc.Driver");
+		Connection connection = DriverManager.getConnection("jdbc:calcite:");
+		CalciteConnection calciteConnection = connection.unwrap(CalciteConnection.class);
+		SchemaPlus rootSchema = calciteConnection.getRootSchema();
+		final DataSource ds = JdbcSchema.dataSource("jdbc:mysql://localhost/world"
+				, "com.mysql.jdbc.Driver", "root", "123456");
+		rootSchema.add("WORLD", JdbcSchema.create(rootSchema, "WORLD", ds, null, null));
+		Statement statement = connection.createStatement();
+		ResultSet resultSet = statement.executeQuery("select * from WORLD.\"city\" limit 1");
+		print(resultSet);
+		resultSet.close();
+		statement.close();
+		connection.close();
+	}
+
+	private static void print(ResultSet resultSet) throws SQLException {
+		ResultSetMetaData rsmd = resultSet.getMetaData();
+		int columnCount = rsmd.getColumnCount();
+		StringBuilder sb = null;
+		while (resultSet.next()) {
+			sb = new StringBuilder();
+			for (int i = 0; i < columnCount; i++) {
+				sb.append(resultSet.getObject(i + 1)).append("\t");
+			}
+			System.out.println(sb);
+		}
+	}
+----
+
+以下这段代码，我试着照官方的写法，而没有成功。以下代码来自于stackoverflow
+----
+SchemaPlus rootSchema = calciteConnection.getRootSchema();
+final DataSource ds = JdbcSchema.dataSource("jdbc:mysql://localhost/world"
+    , "com.mysql.jdbc.Driver", "root", "123456");
+rootSchema.add("WORLD", JdbcSchema.create(rootSchema, "WORLD", ds, null, null));
+----
+
+以下是官方写法，但没有成功，报表找不到。后期会找一下为什么。
+----
+Class.forName("com.mysql.jdbc.Driver");
+BasicDataSource dataSource = new BasicDataSource();
+dataSource.setUrl("jdbc:mysql://localhost");
+dataSource.setUsername("username");
+dataSource.setPassword("password");
+JdbcSchema.create(calciteConnection.getRootSchema(), "name", dataSource,
+    null, "hr");
+----
